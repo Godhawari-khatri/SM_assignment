@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chi-Square Uniformity Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        input[type="number"] {
+            width: 80px;
+        }
+        button {
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #result {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        #error {
+            color: red;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Chi-Square Uniformity Test</h1>
+    
+    <p>Checking uniformity of generated random numbers between [0,1]</p>
+    
+    <label for="intervals">Number of intervals:</label>
+    <input type="number" id="intervals" min="2" max="20" value="10">
+    
+    <label for="totalNumbers">Total numbers:</label>
+    <input type="number" id="totalNumbers" min="10" max="1000" value="100">
+    
+    <label for="alpha">Significance level (α):</label>
+    <input type="number" id="alpha" min="0.01" max="0.99" step="0.01" value="0.05">
+    
+    <label for="criticalValue">Critical Value (χ²):</label>
+    <input type="number" id="criticalValue" min="0" step="0.1" value="16.9">
+    
+    <button onclick="generateTable()">Generate Table</button>
+
+    <div id="tableContainer"></div>
+    <button onclick="calculateChiSquare()">Calculate Chi-Square</button>
+    <div id="result"></div>
+    <div id="error"></div>
+
+    <script>
+        function generateTable() {
+            const intervals = parseInt(document.getElementById('intervals').value);
+            const totalNumbers = parseInt(document.getElementById('totalNumbers').value);
+            
+            if (isNaN(intervals) || intervals < 2 || intervals > 20) {
+                document.getElementById('error').textContent = 'Number of intervals should be between 2 and 20.';
+                return;
+            }
+            
+            if (isNaN(totalNumbers) || totalNumbers < 10 || totalNumbers > 1000) {
+                document.getElementById('error').textContent = 'Total numbers should be between 10 and 1000.';
+                return;
+            }
+
+            let tableHTML = `
+                <table>
+                    <tr>
+                        <th>Interval</th>
+                        <th>Oi</th>
+                        <th>Ei</th>
+                        <th>Oi - Ei</th>
+                        <th>(Oi - Ei)²</th>
+                        <th>(Oi - Ei)²/Ei</th>
+                    </tr>
+            `;
+            
+            for (let i = 1; i <= intervals; i++) {
+                tableHTML += `
+                    <tr>
+                        <td>${i}</td>
+                        <td><input type="number" id="observed${i}" min="0" value="0"></td>
+                        <td id="expected${i}">${(totalNumbers / intervals).toFixed(2)}</td>
+                        <td id="diff${i}"></td>
+                        <td id="diffSquared${i}"></td>
+                        <td id="chiSquareTerm${i}"></td>
+                    </tr>
+                `;
+            }
+            
+            tableHTML += '</table>';
+            document.getElementById('tableContainer').innerHTML = tableHTML;
+            document.getElementById('error').textContent = '';
+            document.getElementById('result').textContent = '';
+        }
+
+        function calculateChiSquare() {
+            try {
+                const intervals = parseInt(document.getElementById('intervals').value);
+                const totalNumbers = parseInt(document.getElementById('totalNumbers').value);
+                const alpha = parseFloat(document.getElementById('alpha').value);
+                const criticalValue = parseFloat(document.getElementById('criticalValue').value);
+                
+                if (isNaN(intervals) || intervals < 2 || intervals > 20) {
+                    throw new Error("Invalid number of intervals. It should be between 2 and 20.");
+                }
+                
+                if (isNaN(totalNumbers) || totalNumbers < 10 || totalNumbers > 1000) {
+                    throw new Error("Invalid total numbers. It should be between 10 and 1000.");
+                }
+                
+                if (isNaN(alpha) || alpha <= 0 || alpha >= 1) {
+                    throw new Error("Invalid alpha value. It should be between 0 and 1.");
+                }
+                
+                if (isNaN(criticalValue) || criticalValue <= 0) {
+                    throw new Error("Invalid critical value. It should be a positive number.");
+                }
+
+                let chiSquare = 0;
+                let totalObserved = 0;
+
+                for (let i = 1; i <= intervals; i++) {
+                    const observed = parseInt(document.getElementById(`observed${i}`).value) || 0;
+                    const expected = totalNumbers / intervals;
+                    if (isNaN(observed)) {
+                        throw new Error(`Invalid input for interval ${i}`);
+                    }
+                    const diff = observed - expected;
+                    const diffSquared = Math.pow(diff, 2);
+                    const chiSquareTerm = diffSquared / expected;
+                    
+                    document.getElementById(`diff${i}`).textContent = diff.toFixed(2);
+                    document.getElementById(`diffSquared${i}`).textContent = diffSquared.toFixed(2);
+                    document.getElementById(`chiSquareTerm${i}`).textContent = chiSquareTerm.toFixed(2);
+                    
+                    chiSquare += chiSquareTerm;
+                    totalObserved += observed;
+                }
+
+                const degreesOfFreedom = intervals - 1;
+
+                let resultHTML = `
+                    <p>Chi-Square Statistic: ${chiSquare.toFixed(2)}</p>
+                    <p>Degrees of Freedom: ${degreesOfFreedom}</p>
+                    <p>Significance level (α): ${alpha}</p>
+                    <p>Critical Value (χ²${alpha},${degreesOfFreedom}): ${criticalValue}</p>
+                `;
+
+                if (chiSquare < criticalValue) {
+                    resultHTML += `<p>Conclusion: Accept the null hypothesis. The calculated value (${chiSquare.toFixed(2)}) is less than the critical value (${criticalValue}). The random numbers appear to be uniformly distributed.</p>`;
+                } else {
+                    resultHTML += `<p>Conclusion: Reject the null hypothesis. The calculated value (${chiSquare.toFixed(2)}) is greater than or equal to the critical value (${criticalValue}). The random numbers do not appear to be uniformly distributed.</p>`;
+                }
+
+                document.getElementById('result').innerHTML = resultHTML;
+                document.getElementById('error').textContent = '';
+            } catch (error) {
+                console.error('Error in calculation:', error);
+                document.getElementById('error').textContent = 'Error: ' + error.message;
+                document.getElementById('result').textContent = '';
+            }
+        }
+
+        // Initialize the table on page load
+        generateTable();
+    </script>
+</body>
+</html>
